@@ -2,6 +2,12 @@
 
 BASE_DIR="$(cd "$(dirname "$0")"; pwd)" || exit 2
 
+# Load user configuration
+if [[ -f "$BASE_DIR/.env" ]]; then
+    source "$BASE_DIR/.env"
+fi
+TERMINAL_NAME="${TERMINAL_NAME:-Proto-Boy}"
+
 IFS=$'\n'
 entrylist=('Go Back')
 rawentry="$(find $BASE_DIR/entries -type f)"
@@ -23,9 +29,9 @@ display_center(){
 
 
 #This string is to be displayed as a custom "title header" at the top, feel free to customise it, as most Terminals in Fallout have their own custom one based on their owner!
-greeter=$'
-Personal Terminal "Proto-Boy" Manufactured by RobCo
-___________________________________________________'
+greeter="
+Personal Terminal \"$TERMINAL_NAME\" Manufactured by RobCo
+___________________________________________________"
 
 
 
@@ -35,35 +41,45 @@ mainmenufunc ()
 clear
 
 #display the Menu text
-play -q $BASE_DIR/ui_hacking_charscroll.wav
+play -q $BASE_DIR/ui_hacking_charscroll.wav -t alsa
 display_center "$BASE_DIR/greeterheader.txt" | pv -qL 80
 echo "$greeter" | pv -qL 80
-play -q $BASE_DIR/ui_hacking_charscroll.wav
-echo What would you like to do? | pv -qL 80
+play -q $BASE_DIR/ui_hacking_charscroll.wav -t alsa
+echo "SELECT OPTION:" | pv -qL 80
 
 #Display the menu options
-COLUMNS=12
-select menuchoice in "View Journal Entries" "Log a Journal Entry" "Delete a Journal Entry" "Proceed to Desktop"
-do
+echo "1) View Personal Logs"
+echo "2) Record Personal Log"
+echo "3) Delete Personal Log"
+echo "4) Terminate Session"
+echo "5) Set Terminal/Inquire"
+while true; do
+    read -p "#? " menuchoice
     case $menuchoice in
-    "View Journal Entries")
-    play -q $BASE_DIR/ui_hacking_charenter_01.wav
+    1)
+    play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
     viewentriesfunc
     ;;
-    "Log a Journal Entry")
-    play -q $BASE_DIR/ui_hacking_charenter_01.wav
-   writeentryfunc
+    2)
+    play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
+    writeentryfunc
     ;;
-    "Delete a Journal Entry")
-    play -q $BASE_DIR/ui_hacking_charenter_01.wav
+    3)
+    play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
     deleteentryfunc
     ;;
-    "Proceed to Desktop")
-    play -q $BASE_DIR/ui_hacking_charenter_01.wav
-    echo Goodbye! && exit
+    4|exit)
+    play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
+    echo "SESSION TERMINATED" && sleep 1 && exit
+    ;;
+    5|"")
+    play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
+    echo "ENTERING DIRECT COMMAND MODE. TYPE 'EXIT' TO RETURN." | pv -qL 80
+    $SHELL
+    repeatmainmenufunc
     ;;
     *)
-    play -q $BASE_DIR/ui_hacking_passbad.wav
+    play -q $BASE_DIR/ui_hacking_passbad.wav -t alsa
     ;;
     esac
 done
@@ -85,8 +101,8 @@ done
     clear
     display_center "$BASE_DIR/greeterheader.txt"
     echo "$greeter" 
-    play -q $BASE_DIR/ui_hacking_charscroll.wav
-    echo Which Journal Entry would you like to access? | pv -qL 80
+    play -q $BASE_DIR/ui_hacking_charscroll.wav -t alsa
+    echo "SELECT PERSONAL LOG:" | pv -qL 80
     
     #display the menu options
     COLUMNS=12
@@ -94,11 +110,11 @@ done
     do
     case $readoption in
     "Go Back")
-    play -q $BASE_DIR/ui_hacking_charenter_01.wav
+    play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
     repeatmainmenufunc
     ;;
         *)
-    play -q $BASE_DIR/ui_hacking_charenter_01.wav
+    play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
     ;;
     esac
 
@@ -107,13 +123,13 @@ done
    display_center "$BASE_DIR/greeterheader.txt"
    echo "$greeter"
     echo
-    play -q $BASE_DIR/ui_hacking_charscroll.wav
+    play -q $BASE_DIR/ui_hacking_charscroll.wav -t alsa
     echo "$readoption:"  | pv -qL 80
-    play -q $BASE_DIR/ui_hacking_charscroll.wav
+    play -q $BASE_DIR/ui_hacking_charscroll.wav -t alsa
     cat< "$BASE_DIR/entries/$readoption"  | pv -qL 80
     echo
-    read -p "Press enter to continue"
-    play -q $BASE_DIR/ui_hacking_charenter_01.wav
+    read -p "> PRESS ENTER TO RETURN"
+    play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
     
     #goes back to main menu
     repeatmainmenufunc
@@ -128,27 +144,27 @@ writeentryfunc ()
 clear
 display_center "$BASE_DIR/greeterheader.txt"
 echo "$greeter" 
-play -q $BASE_DIR/ui_hacking_charscroll.wav
-echo "What would you like to name the entry?" | pv -qL 80
+play -q $BASE_DIR/ui_hacking_charscroll.wav -t alsa
+echo "ENTER LOG DESIGNATION:" | pv -qL 80
 
 #reads user input
 read entrynameinput 
-play -q $BASE_DIR/ui_hacking_charenter_01.wav
+play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
 
 #displays menu text again
 clear
 display_center "$BASE_DIR/greeterheader.txt"
 echo "$greeter" 
-play -q $BASE_DIR/ui_hacking_charscroll.wav
-echo Press CTRL+D to finalise entry  | pv -qL 80
-play -q $BASE_DIR/ui_hacking_charscroll.wav
+play -q $BASE_DIR/ui_hacking_charscroll.wav -t alsa
+echo "PRESS CTRL+D TO FINALIZE ENTRY" | pv -qL 80
+play -q $BASE_DIR/ui_hacking_charscroll.wav -t alsa
 echo $entrynameinput:  | pv -qL 80
 echo
 #uses cat text editor to write entries. ctrl+d to finish
 cat >"$BASE_DIR/entries/$entrynameinput"
 cat "$BASE_DIR/entries/$entrynameinput"
 clear
-play -q $BASE_DIR/ui_hacking_charenter_01.wav
+play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
 
 #returns to mainmenu
 repeatmainmenufunc
@@ -172,8 +188,8 @@ done
     clear
     display_center "$BASE_DIR/greeterheader.txt"
     echo "$greeter" 
-    play -q $BASE_DIR/ui_hacking_charscroll.wav
-    echo Which Journal Entry would you like to delete? | pv -qL 80
+    play -q $BASE_DIR/ui_hacking_charscroll.wav -t alsa
+    echo "SELECT LOG TO DELETE:" | pv -qL 80
     
     #displays menu options
     COLUMNS=12
@@ -181,11 +197,11 @@ done
     do
     case $readoption in
     "Go Back")
-    play -q $BASE_DIR/ui_hacking_charenter_01.wav
+    play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
     repeatmainmenufunc
     ;;
         *)
-    play -q $BASE_DIR/ui_hacking_charenter_01.wav
+    play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
     ;;
     esac
     
@@ -194,26 +210,26 @@ done
    display_center "$BASE_DIR/greeterheader.txt"
    echo "$greeter"
     echo
-    play -q $BASE_DIR/ui_hacking_charscroll.wav
-    echo "Delete $readoption? Type YES to continue"  | pv -qL 80
-    play -q $BASE_DIR/ui_hacking_charscroll.wav
+    play -q $BASE_DIR/ui_hacking_charscroll.wav -t alsa
+    echo "CONFIRM DELETION OF $readoption? [Y/N]"  | pv -qL 80
+    play -q $BASE_DIR/ui_hacking_charscroll.wav -t alsa
     
     #detects user input if they typed in "yes". case insensitive as it converts it to all caps
     read confirmdeletion
-     if  [[ ${confirmdeletion^^} == "YES" ]]
+     if  [[ ${confirmdeletion^^} == "Y" || ${confirmdeletion^^} == "YES" ]]
      then
      rm -f "$BASE_DIR/entries/$readoption"
-     play -q $BASE_DIR/ui_hacking_charenter_01.wav
-     echo FILE DELETED!
-     play -q  $BASE_DIR/ui_hacking_passgood.wav
+     play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
+     echo "LOG PURGED"
+     play -q  $BASE_DIR/ui_hacking_passgood.wav -t alsa
      sleep 0.1
                 repeatmainmenufunc
                 
             #if something other than yes was typed in
         else
-        echo OPERATION CANCELLED
-        play -q $BASE_DIR/ui_hacking_charenter_01.wav
-        play -q  $BASE_DIR/ui_hacking_passbad.wav
+        echo "OPERATION CANCELLED"
+        play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
+        play -q  $BASE_DIR/ui_hacking_passbad.wav -t alsa 
         sleep 0.2
         
         #goes back to main menu
@@ -229,30 +245,41 @@ clear
 
 display_center "$BASE_DIR/greeterheader.txt"
 echo "$greeter" 
-play -q $BASE_DIR/ui_hacking_charscroll.wav
-echo What would you like to do? | pv -qL 80
-COLUMNS=12
-select menuchoice in "View Journal Entries" "Log a Journal Entry" "Delete a Journal Entry" "Proceed to Desktop"
-do
+play -q $BASE_DIR/ui_hacking_charscroll.wav -t alsa
+echo "SELECT OPTION:" | pv -qL 80
+echo "1) View Personal Logs"
+echo "2) Record Personal Log"
+echo "3) Delete Personal Log"
+echo "4) Terminate Session"
+echo "5) Set Terminal/Inquire"
+while true; do
+    read -p "#? " menuchoice
     case $menuchoice in
-    "View Journal Entries")
-    play -q $BASE_DIR/ui_hacking_charenter_01.wav
+    1)
+    play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
     viewentriesfunc
     ;;
-    "Log a Journal Entry")
-    play -q $BASE_DIR/ui_hacking_charenter_01.wav
-   writeentryfunc
+    2)
+    play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
+    writeentryfunc
     ;;
-    "Delete a Journal Entry")
-    play -q $BASE_DIR/ui_hacking_charenter_01.wav
+    3)
+    play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
     deleteentryfunc
     ;;
-    "Proceed to Desktop")
-    play -q $BASE_DIR/ui_hacking_charenter_01.wav
-    echo Goodbye! && exit
+    4|exit)
+    play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
+    echo "SESSION TERMINATED" && sleep 2
+    exit
+    ;;
+    5|"")
+    play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
+    echo "ENTERING DIRECT COMMAND MODE. TYPE 'exit' TO RETURN." | pv -qL 80
+    $SHELL
+    repeatmainmenufunc
     ;;
     *)
-    play -q $BASE_DIR/ui_hacking_passbad.wav
+    play -q $BASE_DIR/ui_hacking_passbad.wav -t alsa
     ;;
     esac
 done
@@ -264,18 +291,18 @@ done
 #some random aesthetic startup junk
 
 clear
-play -q $BASE_DIR/ui_hacking_charscroll.wav
-echo Initializing boot... | pv -qL 80
-sleep 0.4
-play -q $BASE_DIR/ui_hacking_charscroll.wav
-echo Loading RobCo Unified OS...  | pv -qL 80
-sleep 0.4
-play -q $BASE_DIR/ui_hacking_charscroll.wav
-echo 64K RAM detected...  | pv -qL 80
-sleep 0.4
-play -q $BASE_DIR/ui_hacking_charscroll.wav
-echo Launching Interface...  | pv -qL 80
-sleep 0.4
+play -q $BASE_DIR/ui_hacking_charscroll.wav -t alsa
+echo "RBIOS v95.2" | pv -qL 80
+read -t 0.4 && mainmenufunc
+play -q $BASE_DIR/ui_hacking_charscroll.wav -t alsa
+echo "LOADING ROBCO UNIFIED OS..." | pv -qL 80
+read -t 0.4 && mainmenufunc
+play -q $BASE_DIR/ui_hacking_charscroll.wav -t alsa
+echo "64K RAM SYSTEM" | pv -qL 80
+read -t 0.4 && mainmenufunc
+play -q $BASE_DIR/ui_hacking_charscroll.wav -t alsa
+echo "HOLOTAPE READER PRESENT" | pv -qL 80
+read -t 0.4 && mainmenufunc
 clear
 echo $'
 
@@ -290,8 +317,8 @@ echo $'
 '
            
 echo "==============================================" | pv -qL 50
-play -q $BASE_DIR/ui_hacking_passgood.wav
-sleep 1
+play -q $BASE_DIR/ui_hacking_passgood.wav -t alsa
+read -t 1 && mainmenufunc
 
 #goes to the main menu
 mainmenufunc;
