@@ -45,11 +45,11 @@ else
     echo ".env already exists (not overwritten)"
 fi
 
-# Make script executable
-chmod +x "$BASE_DIR/terminalscript"
-echo "terminalscript is executable"
+# Make scripts executable
+chmod +x "$BASE_DIR/terminalscript" "$BASE_DIR/run.sh"
+echo "terminalscript and run.sh are executable"
 
 echo ""
 echo "Done. Run with:"
-echo "  cool-retro-term --fullscreen --noclose -e bash $BASE_DIR/terminalscript"
+echo "  $BASE_DIR/run.sh"
 echo ""

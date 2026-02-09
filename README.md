@@ -68,19 +68,38 @@ For the authentic Fallout terminal look, install the **Monofonto** font (a recre
 4. Set **Rasterization** to **Default** (required to see system fonts)
 5. Select **System: Monofonto** from the font dropdown
 
-A cool-retro-term profile is included in `Fallout.json` with recommended CRT settings (green phosphor, screen curvature, Monofonto font). To use it: right-click -> Settings -> Load Profile -> select `Fallout.json`.
+A cool-retro-term profile is included in `Fallout.json` with recommended CRT settings (green phosphor, screen curvature, Monofonto font).
+
+**Applying the Fallout.json profile in cool-retro-term:**
+
+1. Open cool-retro-term (you can run it once normally first).
+2. Right-click inside the terminal window → **Settings** (or **Edit → Settings**).
+3. In the left sidebar, open **Profiles** or find the **Load Profile** option.
+4. Click **Load Profile** (or **Import** / **Open**).
+5. Browse to your Fallout3Terminal folder and select **Fallout.json**, then open it.
+6. The profile is now active. Close the settings; your next session will use the Fallout look.
+
+You can also run the terminal from the project folder and load the profile once; cool-retro-term may remember the last profile.
 
 # Download and run Fallout3Terminal in Linux
 
-To run this script clone this repository, make "terminalscript" an executable , and run `cool-retro-term` as follows:
+Clone the repository, then run the script (optionally use the included launcher):
 
 ```bash
 git clone https://github.com/fohtla/Fallout3Terminal
-chmod +x $HOME/Fallout3Terminal/terminalscript
+cd Fallout3Terminal
+chmod +x install.sh run.sh terminalscript
+./install.sh
+./run.sh
+```
+
+Or run cool-retro-term manually:
+
+```bash
 cool-retro-term --fullscreen --noclose -e bash $HOME/Fallout3Terminal/terminalscript
 ```
 
-You can also enter that command in your startup manager, as well as make launcher with it!
+**`run.sh`** — Launcher that starts cool-retro-term in fullscreen with the terminal script. Run from the project directory: `./run.sh`. You can add this to your startup or create a desktop launcher.
 
 # Download and Run Fallout3Terminal on MacOS
 
