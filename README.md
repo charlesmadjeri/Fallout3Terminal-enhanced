@@ -1,5 +1,9 @@
 # Fallout3Terminal
 
+Thanks to the original author [fohtla](https://github.com/fohtla) and the [original Fallout3Terminal repository](https://github.com/fohtla/Fallout3Terminal). This enhanced version adds configuration options, installation and run scripts, and documentation improvements.
+
+---
+
 Fallout3Terminal is a Fallout 3/4/NV-inspired Terminal operating system, complete with the ability to write personal logs, and in-game sounds from Fallout 3 itself! The interface uses lore-accurate RobCo Unified Operating System styling, including a POST-like boot sequence, terse all-caps terminal prompts, and authentic sound effects.
 
 This is a bash script that runs inside [cool-retro-term](https://github.com/Swordfish90/cool-retro-term), a retro CRT terminal emulator, for the full Fallout experience.
@@ -28,7 +32,7 @@ You must have the following:
 
 This has not been tested on Windows or *BSD operating systems.
 
-Thanks to GitHub user iFloris, there are now instructions to run this on MacOS! Read on below.
+Instructions for MacOS are included below.
 
 # Configuration
 
@@ -86,8 +90,8 @@ You can also run the terminal from the project folder and load the profile once;
 Clone the repository, then run the script (optionally use the included launcher):
 
 ```bash
-git clone https://github.com/fohtla/Fallout3Terminal
-cd Fallout3Terminal
+git clone https://github.com/charlesmadjeri/Fallout3Terminal-enhanced
+cd Fallout3Terminal-enhanced
 chmod +x install.sh run.sh terminalscript
 ./install.sh
 ./run.sh
@@ -96,22 +100,22 @@ chmod +x install.sh run.sh terminalscript
 Or run cool-retro-term manually:
 
 ```bash
-cool-retro-term --fullscreen --noclose -e bash $HOME/Fallout3Terminal/terminalscript
+cool-retro-term --fullscreen --noclose -e bash $HOME/Fallout3Terminal-enhanced/terminalscript
 ```
 
 **`run.sh`** — Launcher that starts cool-retro-term in fullscreen with the terminal script. Run from the project directory: `./run.sh`. You can add this to your startup or create a desktop launcher.
 
 # Download and Run Fallout3Terminal on MacOS
 
- ( Instructions provided by user iFloris! )
+ (MacOS instructions contributed by iFloris.)
 
 * Have homebrew installed
    * Run the following:
 ```
 brew install sox pv
 brew cask install cool-retro-term
-git clone https://github.com/fohtla/Fallout3Terminal
-/Applications/cool-retro-term.app/Contents/MacOS/cool-retro-term --fullscreen --noclose -e bash $HOME/Fallout3Terminal/terminalscript
+git clone https://github.com/charlesmadjeri/Fallout3Terminal-enhanced
+/Applications/cool-retro-term.app/Contents/MacOS/cool-retro-term --fullscreen --noclose -e bash $HOME/Fallout3Terminal-enhanced/terminalscript
 ```
 
 # Hidden Commands
@@ -125,8 +129,4 @@ These commands are not shown in the menu but work at the `#?` prompt:
 
 # Additional notes
 
-Thank you for your interest in this! This was just a little side project that I made while sick at home, but a lot of people wanted a download!
-
-A CRT preset is included as `Fallout.json` — import it into cool-retro-term for the recommended look. Feel free to tweak it or create your own. You might want to try a New Vegas amber look by changing the font color to `#ff8100`!
-
-Believe it or not, I don't actually do a lot of this kind of thing, and I instead do a lot of Digital Art! I'm still learning, but you can check me out on [@fohtla_arts](http://instagram.com/fohtla_arts) on instagram. Otherwise, enjoy this little program I made for funsies!
+A CRT preset is included as `Fallout.json` — import it into cool-retro-term for the recommended look. You can tweak it or create your own; for a New Vegas–style amber look, try changing the font color to `#ff8100`.
