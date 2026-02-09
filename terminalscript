@@ -6,7 +6,9 @@ BASE_DIR="$(cd "$(dirname "$0")"; pwd)" || exit 2
 if [[ -f "$BASE_DIR/.env" ]]; then
     source "$BASE_DIR/.env"
 fi
-TERMINAL_NAME="${TERMINAL_NAME:-Perceptron}"
+TERMINAL_NAME="${TERMINAL_NAME:-Proto-Boy}"
+TYPEWRITE_SPEED="${TYPEWRITE_SPEED:-80}"
+SOUND_ENABLED="${SOUND_ENABLED:-true}"
 
 # Ensure entries directory exists
 mkdir -p "$BASE_DIR/entries"
@@ -31,14 +33,16 @@ display_center() {
     done < "$1"
 }
 
-# Play a sound file, silently skip if sox/play is not available
+# Play a sound file, silently skip if sox/play not available or SOUND_ENABLED=false
+# SoX uses the system default playback device (no -t needed)
 play_sound() {
-    command -v play &>/dev/null && play -q "$BASE_DIR/$1" -t alsa 2>/dev/null
+    [[ "${SOUND_ENABLED}" == "false" ]] && return
+    command -v play &>/dev/null && play -q "$BASE_DIR/$1" 2>/dev/null
 }
 
 # Print text with the typewriter scroll effect
 typewrite() {
-    echo "$1" | pv -qL 80
+    echo "$1" | pv -qL "${TYPEWRITE_SPEED}"
 }
 
 # Clear screen and draw the standard header + greeter
@@ -46,8 +50,8 @@ typewrite() {
 draw_header() {
     clear
     if [[ "$1" == "animated" ]]; then
-        display_center "$BASE_DIR/greeterheader.txt" | pv -qL 80
-        echo "$GREETER" | pv -qL 80
+        display_center "$BASE_DIR/greeterheader.txt" | pv -qL "${TYPEWRITE_SPEED}"
+        echo "$GREETER" | pv -qL "${TYPEWRITE_SPEED}"
     else
         display_center "$BASE_DIR/greeterheader.txt"
         echo "$GREETER"
@@ -79,9 +83,10 @@ main_menu() {
 
     echo "1) View Personal Logs"
     echo "2) Record Personal Log"
-    echo "3) Delete Personal Log"
-    echo "4) Terminate Session"
-    echo "5) Set Terminal/Inquire"
+    echo "3) Edit Personal Log"
+    echo "4) Delete Personal Log"
+    echo "5) Terminate Session"
+    echo "6) Set Terminal/Inquire"
 
     while true; do
         read -p "#? " menuchoice
@@ -96,13 +101,17 @@ main_menu() {
                 ;;
             3)
                 play_sound "ui_hacking_charenter_01.wav"
+                edit_entry
+                ;;
+            4)
+                play_sound "ui_hacking_charenter_01.wav"
                 delete_entry
                 ;;
-            4|exit)
+            5|exit)
                 play_sound "ui_hacking_charenter_01.wav"
                 echo "SESSION TERMINATED" && sleep 1 && exit
                 ;;
-            5|"")
+            6|"")
                 play_sound "ui_hacking_charenter_01.wav"
                 typewrite "ENTERING DIRECT COMMAND MODE. TYPE 'EXIT' TO RETURN."
                 $SHELL
@@ -144,7 +153,7 @@ view_entries() {
         play_sound "ui_hacking_charscroll.wav"
         typewrite "$readoption:"
         play_sound "ui_hacking_charscroll.wav"
-        cat < "$BASE_DIR/entries/$readoption" | pv -qL 80
+        cat < "$BASE_DIR/entries/$readoption" | pv -qL "${TYPEWRITE_SPEED}"
         echo
         read -p "> PRESS ENTER TO RETURN"
         play_sound "ui_hacking_charenter_01.wav"
@@ -172,13 +181,88 @@ write_entry() {
     typewrite "$entrynameinput:"
     echo
 
-    # Use cat as a simple text editor — Ctrl+D to finish
-    cat > "$BASE_DIR/entries/$entrynameinput"
+    # Prepend lore-style timestamp, then user content. Ctrl+D to finish
+    ( echo "LOGGED: $(date +'%m.%d.2077 %H:%M')"; cat ) > "$BASE_DIR/entries/$entrynameinput"
     cat "$BASE_DIR/entries/$entrynameinput"
     clear
     play_sound "ui_hacking_charenter_01.wav"
 
     main_menu
+}
+
+###############################################################################
+# Edit an existing personal log (opens in editor with existing content)
+###############################################################################
+
+# Pick editor for log editing: LOG_EDITOR (.env), VISUAL, EDITOR, then vim, vi, nano.
+# Gives the same kind of navigation as "create log" (arrows, Enter = new line) by using a real editor.
+# If none available, fall back to integrated cat-based replace (show content, then type new content, Ctrl+D).
+get_editor() {
+    local cmd
+    for candidate in "${LOG_EDITOR}" "${VISUAL}" "${EDITOR}" "vim" "vi" "nano"; do
+        [[ -z "$candidate" ]] && continue
+        cmd="${candidate%% *}"
+        command -v "$cmd" &>/dev/null && echo "$candidate" && return
+    done
+    return 1
+}
+
+# Fallback when no editor is available: show content then replace via cat (like create flow)
+integrated_editor_fallback() {
+    local logpath="$1"
+    local readoption="$2"
+    draw_header
+    echo
+    play_sound "ui_hacking_charscroll.wav"
+    typewrite "CURRENT CONTENT OF $readoption:"
+    play_sound "ui_hacking_charscroll.wav"
+    cat < "$logpath" | pv -qL "${TYPEWRITE_SPEED}"
+    echo
+    typewrite "ENTER NEW CONTENT (REPLACES LOG). PRESS CTRL+D TO SAVE."
+    play_sound "ui_hacking_charscroll.wav"
+    typewrite "$readoption:"
+    echo
+    cat > "$logpath"
+}
+
+edit_entry() {
+    refresh_entries
+
+    draw_header
+    play_sound "ui_hacking_charscroll.wav"
+    typewrite "SELECT LOG TO EDIT:"
+
+    COLUMNS=12
+    select readoption in "${entrylist[@]}"; do
+        case "$readoption" in
+            "Go Back")
+                play_sound "ui_hacking_charenter_01.wav"
+                main_menu
+                ;;
+            *)
+                play_sound "ui_hacking_charenter_01.wav"
+                ;;
+        esac
+
+        local logpath="$BASE_DIR/entries/$readoption"
+        local editor
+        editor="$(get_editor)"
+
+        if [[ -n "$editor" ]]; then
+            draw_header
+            echo
+            play_sound "ui_hacking_charscroll.wav"
+            typewrite "OPENING LOG FOR EDIT. SAVE AND EXIT EDITOR TO RETURN."
+            play_sound "ui_hacking_charenter_01.wav"
+            $editor "$logpath"
+        else
+            integrated_editor_fallback "$logpath" "$readoption"
+        fi
+
+        clear
+        play_sound "ui_hacking_charenter_01.wav"
+        main_menu
+    done
 }
 
 ###############################################################################
@@ -231,7 +315,13 @@ delete_entry() {
 
 ###############################################################################
 # Boot sequence — press Enter at any point to skip to main menu
+# Set SKIP_BOOT=true in .env to skip entirely
 ###############################################################################
+
+if [[ "${SKIP_BOOT}" == "true" ]]; then
+    main_menu animated
+    exit 0
+fi
 
 clear
 play_sound "ui_hacking_charscroll.wav"
@@ -263,7 +353,7 @@ echo $'
 
 '
 
-echo "==============================================" | pv -qL 50
+echo "==============================================" | pv -qL "${TYPEWRITE_SPEED}"
 play_sound "ui_hacking_passgood.wav"
 read -t 1 && main_menu animated
 

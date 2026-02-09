@@ -4,19 +4,17 @@ Fallout3Terminal is a Fallout 3/4/NV-inspired Terminal operating system, complet
 
 This is a bash script that runs inside [cool-retro-term](https://github.com/Swordfish90/cool-retro-term), a retro CRT terminal emulator, for the full Fallout experience.
 
-See the original demonstration video on reddit:
-
-[https://www.reddit.com/r/linux/comments/dw9gfw/i_recreated_a_fallout_3_terminal_as_a_linux_bash/](https://www.reddit.com/r/linux/comments/dw9gfw/i_recreated_a_fallout_3_terminal_as_a_linux_bash/)
-
 # Features
 
 * **View Personal Logs** - Browse and read saved log entries
-* **Record Personal Log** - Create new log entries with a name and content
+* **Record Personal Log** - Create new log entries (with lore-style timestamp)
+* **Edit Personal Log** - Open the log in an editor (same feel as create: arrows, Enter = new line). Uses LOG_EDITOR or vim/vi/nano when unset
 * **Delete Personal Log** - Remove log entries with Y/N confirmation
 * **Terminate Session** - Exit the terminal (also available by typing `exit`)
 * **Set Terminal/Inquire** - Drop into a real shell session (also triggered by pressing Enter)
 * **Skippable boot sequence** - Press Enter during the POST animation to jump straight to the main menu
 * **Lore-accurate UI** - POST-style boot (`RBIOS v95.2`, `64K RAM SYSTEM`, `HOLOTAPE READER PRESENT`), all-caps prompts, and authentic Fallout 3 sound effects
+* **Configurable** - Typewriter speed, sound on/off, skip boot via `.env`
 
 # Requirements
 
@@ -34,20 +32,31 @@ Thanks to GitHub user iFloris, there are now instructions to run this on MacOS! 
 
 # Configuration
 
-Copy the example config file and edit it with your name:
+Copy the example config file and edit it, or use the install script (see below):
 
 ```bash
 cp .env.example .env
 nano .env
 ```
 
-The `.env` file contains:
-
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `TERMINAL_NAME` | Name shown in the greeter header | `Proto-Boy` |
+| `TYPEWRITE_SPEED` | Typewriter effect speed (chars/sec) | `80` |
+| `SKIP_BOOT` | Set to `true` to skip boot animation | `false` |
+| `SOUND_ENABLED` | Set to `false` to disable sound effects | `true` |
+| `LOG_EDITOR` | Editor for "Edit Personal Log". Empty = use vim, vi, or nano for same navigation as create log | *(empty)* |
 
-This controls the line `Personal Terminal "YOUR_NAME" Manufactured by RobCo` at the top of the screen. Use your name, a character name, or a terminal designation.
+# Install script
+
+From the project directory, run:
+
+```bash
+chmod +x install.sh
+./install.sh
+```
+
+This checks for dependencies (pv, sox, cool-retro-term), creates `.env` from `.env.example` if missing, prompts for your terminal name, creates the `entries/` directory, and makes `terminalscript` executable.
 
 # Font Setup (Recommended)
 
@@ -92,8 +101,8 @@ These commands are not shown in the menu but work at the `#?` prompt:
 
 | Input | Action |
 |-------|--------|
-| `exit` | Terminates the session (same as option 4) |
-| Enter (empty) | Drops into a shell session (same as option 5) |
+| `exit` | Terminates the session (same as option 5) |
+| Enter (empty) | Drops into a shell session (same as option 6) |
 
 # Additional notes
 
