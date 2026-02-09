@@ -7,302 +7,339 @@ if [[ -f "$BASE_DIR/.env" ]]; then
     source "$BASE_DIR/.env"
 fi
 TERMINAL_NAME="${TERMINAL_NAME:-Proto-Boy}"
+TYPEWRITE_SPEED="${TYPEWRITE_SPEED:-80}"
+SOUND_ENABLED="${SOUND_ENABLED:-true}"
 
-IFS=$'\n'
-entrylist=('Go Back')
-rawentry="$(find $BASE_DIR/entries -type f)"
-for i in $rawentry; do
-i=${i##*/}
-entrylist+=("$i")
-done
+# Ensure entries directory exists
+mkdir -p "$BASE_DIR/entries"
+
+# Greeter header displayed at the top of every screen
+GREETER="
+Personal Terminal \"$TERMINAL_NAME\" Manufactured by RobCo
+___________________________________________________"
 
 COLUMNS=12
 
+###############################################################################
+# Helper functions
+###############################################################################
 
-#This function is to display the top header in a centred alignment!
-display_center(){
+# Display a file's contents centred horizontally
+display_center() {
+    local columns
     columns="$(tput cols)"
     while IFS= read -r line; do
         printf "%*s\n" $(( (${#line} + columns) / 2)) "$line"
     done < "$1"
 }
 
-
-#This string is to be displayed as a custom "title header" at the top, feel free to customise it, as most Terminals in Fallout have their own custom one based on their owner!
-greeter="
-Personal Terminal \"$TERMINAL_NAME\" Manufactured by RobCo
-___________________________________________________"
-
-
-
-#Main Menu Screen
-mainmenufunc () 
-{
-clear
-
-#display the Menu text
-play -q $BASE_DIR/ui_hacking_charscroll.wav -t alsa
-display_center "$BASE_DIR/greeterheader.txt" | pv -qL 80
-echo "$greeter" | pv -qL 80
-play -q $BASE_DIR/ui_hacking_charscroll.wav -t alsa
-echo "SELECT OPTION:" | pv -qL 80
-
-#Display the menu options
-echo "1) View Personal Logs"
-echo "2) Record Personal Log"
-echo "3) Delete Personal Log"
-echo "4) Terminate Session"
-echo "5) Set Terminal/Inquire"
-while true; do
-    read -p "#? " menuchoice
-    case $menuchoice in
-    1)
-    play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
-    viewentriesfunc
-    ;;
-    2)
-    play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
-    writeentryfunc
-    ;;
-    3)
-    play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
-    deleteentryfunc
-    ;;
-    4|exit)
-    play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
-    echo "SESSION TERMINATED" && sleep 1 && exit
-    ;;
-    5|"")
-    play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
-    echo "ENTERING DIRECT COMMAND MODE. TYPE 'EXIT' TO RETURN." | pv -qL 80
-    $SHELL
-    repeatmainmenufunc
-    ;;
-    *)
-    play -q $BASE_DIR/ui_hacking_passbad.wav -t alsa
-    ;;
-    esac
-done
+# Play a sound file, silently skip if sox/play not available or SOUND_ENABLED=false
+# SoX uses the system default playback device (no -t needed)
+play_sound() {
+    [[ "${SOUND_ENABLED}" == "false" ]] && return
+    command -v play &>/dev/null && play -q "$BASE_DIR/$1" 2>/dev/null
 }
 
+# Print text with the typewriter scroll effect
+typewrite() {
+    echo "$1" | pv -qL "${TYPEWRITE_SPEED}"
+}
 
-#Option 1 Menu, Viewing Journal Entries
-viewentriesfunc () 
-{
-#adding all the text files as individual strings to be used as a selection menu
-entrylist=('Go Back')
-rawentry="$(find $BASE_DIR/entries -type f)"
-for i in $rawentry; do
-i=${i##*/}
-entrylist+=("$i")
-done
-
-#display the Menu text
+# Clear screen and draw the standard header + greeter
+# Usage: draw_header [animated]
+draw_header() {
     clear
-    display_center "$BASE_DIR/greeterheader.txt"
-    echo "$greeter" 
-    play -q $BASE_DIR/ui_hacking_charscroll.wav -t alsa
-    echo "SELECT PERSONAL LOG:" | pv -qL 80
-    
-    #display the menu options
-    COLUMNS=12
-    select readoption in ${entrylist[@]}
-    do
-    case $readoption in
-    "Go Back")
-    play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
-    repeatmainmenufunc
-    ;;
-        *)
-    play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
-    ;;
-    esac
+    if [[ "$1" == "animated" ]]; then
+        display_center "$BASE_DIR/greeterheader.txt" | pv -qL "${TYPEWRITE_SPEED}"
+        echo "$GREETER" | pv -qL "${TYPEWRITE_SPEED}"
+    else
+        display_center "$BASE_DIR/greeterheader.txt"
+        echo "$GREETER"
+    fi
+}
 
-    #displays the selected entry
-    clear
-   display_center "$BASE_DIR/greeterheader.txt"
-   echo "$greeter"
-    echo
-    play -q $BASE_DIR/ui_hacking_charscroll.wav -t alsa
-    echo "$readoption:"  | pv -qL 80
-    play -q $BASE_DIR/ui_hacking_charscroll.wav -t alsa
-    cat< "$BASE_DIR/entries/$readoption"  | pv -qL 80
-    echo
-    read -p "> PRESS ENTER TO RETURN"
-    play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
-    
-    #goes back to main menu
-    repeatmainmenufunc
+# Rebuild the entry list from the entries directory
+refresh_entries() {
+    IFS=$'\n'
+    entrylist=('Go Back')
+    local rawentry
+    rawentry="$(find "$BASE_DIR/entries" -type f)"
+    local i
+    for i in $rawentry; do
+        i="${i##*/}"
+        entrylist+=("$i")
     done
 }
 
-#menu for writing an entry
-writeentryfunc () 
-{
+###############################################################################
+# Main menu
+# Usage: main_menu [animated]
+###############################################################################
 
-#displays menu text
-clear
-display_center "$BASE_DIR/greeterheader.txt"
-echo "$greeter" 
-play -q $BASE_DIR/ui_hacking_charscroll.wav -t alsa
-echo "ENTER LOG DESIGNATION:" | pv -qL 80
+main_menu() {
+    draw_header "$1"
+    play_sound "ui_hacking_charscroll.wav"
+    typewrite "SELECT OPTION:"
 
-#reads user input
-read entrynameinput 
-play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
+    echo "1) View Personal Logs"
+    echo "2) Record Personal Log"
+    echo "3) Edit Personal Log"
+    echo "4) Delete Personal Log"
+    echo "5) Terminate Session"
+    echo "6) Set Terminal/Inquire"
 
-#displays menu text again
-clear
-display_center "$BASE_DIR/greeterheader.txt"
-echo "$greeter" 
-play -q $BASE_DIR/ui_hacking_charscroll.wav -t alsa
-echo "PRESS CTRL+D TO FINALIZE ENTRY" | pv -qL 80
-play -q $BASE_DIR/ui_hacking_charscroll.wav -t alsa
-echo $entrynameinput:  | pv -qL 80
-echo
-#uses cat text editor to write entries. ctrl+d to finish
-cat >"$BASE_DIR/entries/$entrynameinput"
-cat "$BASE_DIR/entries/$entrynameinput"
-clear
-play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
-
-#returns to mainmenu
-repeatmainmenufunc
-
-
+    while true; do
+        read -p "#? " menuchoice
+        case $menuchoice in
+            1)
+                play_sound "ui_hacking_charenter_01.wav"
+                view_entries
+                ;;
+            2)
+                play_sound "ui_hacking_charenter_01.wav"
+                write_entry
+                ;;
+            3)
+                play_sound "ui_hacking_charenter_01.wav"
+                edit_entry
+                ;;
+            4)
+                play_sound "ui_hacking_charenter_01.wav"
+                delete_entry
+                ;;
+            5|exit)
+                play_sound "ui_hacking_charenter_01.wav"
+                echo "SESSION TERMINATED" && sleep 1 && exit
+                ;;
+            6|"")
+                play_sound "ui_hacking_charenter_01.wav"
+                typewrite "ENTERING DIRECT COMMAND MODE. TYPE 'EXIT' TO RETURN."
+                $SHELL
+                main_menu
+                ;;
+            *)
+                play_sound "ui_hacking_passbad.wav"
+                ;;
+        esac
+    done
 }
 
-#menu to delete an entry
-deleteentryfunc () 
-{
+###############################################################################
+# View personal logs
+###############################################################################
 
-#adding all the text files as individual strings to be used as a selection menu
-entrylist=('Go Back')
-rawentry="$(find $BASE_DIR/entries -type f)"
-for i in $rawentry; do
-i=${i##*/}
-entrylist+=("$i")
-done
+view_entries() {
+    refresh_entries
 
-    #displays menu text
-    clear
-    display_center "$BASE_DIR/greeterheader.txt"
-    echo "$greeter" 
-    play -q $BASE_DIR/ui_hacking_charscroll.wav -t alsa
-    echo "SELECT LOG TO DELETE:" | pv -qL 80
-    
-    #displays menu options
+    draw_header
+    play_sound "ui_hacking_charscroll.wav"
+    typewrite "SELECT PERSONAL LOG:"
+
     COLUMNS=12
-    select readoption in ${entrylist[@]}
-    do
-    case $readoption in
-    "Go Back")
-    play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
-    repeatmainmenufunc
-    ;;
-        *)
-    play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
-    ;;
-    esac
-    
-    #displays menu text again
-    clear
-   display_center "$BASE_DIR/greeterheader.txt"
-   echo "$greeter"
+    select readoption in "${entrylist[@]}"; do
+        case "$readoption" in
+            "Go Back")
+                play_sound "ui_hacking_charenter_01.wav"
+                main_menu
+                ;;
+            *)
+                play_sound "ui_hacking_charenter_01.wav"
+                ;;
+        esac
+
+        # Display the selected entry
+        draw_header
+        echo
+        play_sound "ui_hacking_charscroll.wav"
+        typewrite "$readoption:"
+        play_sound "ui_hacking_charscroll.wav"
+        cat < "$BASE_DIR/entries/$readoption" | pv -qL "${TYPEWRITE_SPEED}"
+        echo
+        read -p "> PRESS ENTER TO RETURN"
+        play_sound "ui_hacking_charenter_01.wav"
+
+        main_menu
+    done
+}
+
+###############################################################################
+# Record a new personal log
+###############################################################################
+
+write_entry() {
+    draw_header
+    play_sound "ui_hacking_charscroll.wav"
+    typewrite "ENTER LOG DESIGNATION:"
+
+    read entrynameinput
+    play_sound "ui_hacking_charenter_01.wav"
+
+    draw_header
+    play_sound "ui_hacking_charscroll.wav"
+    typewrite "PRESS CTRL+D TO FINALIZE ENTRY"
+    play_sound "ui_hacking_charscroll.wav"
+    typewrite "$entrynameinput:"
     echo
-    play -q $BASE_DIR/ui_hacking_charscroll.wav -t alsa
-    echo "CONFIRM DELETION OF $readoption? [Y/N]"  | pv -qL 80
-    play -q $BASE_DIR/ui_hacking_charscroll.wav -t alsa
-    
-    #detects user input if they typed in "yes". case insensitive as it converts it to all caps
-    read confirmdeletion
-     if  [[ ${confirmdeletion^^} == "Y" || ${confirmdeletion^^} == "YES" ]]
-     then
-     rm -f "$BASE_DIR/entries/$readoption"
-     play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
-     echo "LOG PURGED"
-     play -q  $BASE_DIR/ui_hacking_passgood.wav -t alsa
-     sleep 0.1
-                repeatmainmenufunc
-                
-            #if something other than yes was typed in
+
+    # Prepend lore-style timestamp, then user content. Ctrl+D to finish
+    ( echo "LOGGED: $(date +'%m.%d.2077 %H:%M')"; cat ) > "$BASE_DIR/entries/$entrynameinput"
+    cat "$BASE_DIR/entries/$entrynameinput"
+    clear
+    play_sound "ui_hacking_charenter_01.wav"
+
+    main_menu
+}
+
+###############################################################################
+# Edit an existing personal log (opens in editor with existing content)
+###############################################################################
+
+# Pick editor for log editing: LOG_EDITOR (.env), VISUAL, EDITOR, then vim, vi, nano.
+# Gives the same kind of navigation as "create log" (arrows, Enter = new line) by using a real editor.
+# If none available, fall back to integrated cat-based replace (show content, then type new content, Ctrl+D).
+get_editor() {
+    local cmd
+    for candidate in "${LOG_EDITOR}" "${VISUAL}" "${EDITOR}" "vim" "vi" "nano"; do
+        [[ -z "$candidate" ]] && continue
+        cmd="${candidate%% *}"
+        command -v "$cmd" &>/dev/null && echo "$candidate" && return
+    done
+    return 1
+}
+
+# Fallback when no editor is available: show content then replace via cat (like create flow)
+integrated_editor_fallback() {
+    local logpath="$1"
+    local readoption="$2"
+    draw_header
+    echo
+    play_sound "ui_hacking_charscroll.wav"
+    typewrite "CURRENT CONTENT OF $readoption:"
+    play_sound "ui_hacking_charscroll.wav"
+    cat < "$logpath" | pv -qL "${TYPEWRITE_SPEED}"
+    echo
+    typewrite "ENTER NEW CONTENT (REPLACES LOG). PRESS CTRL+D TO SAVE."
+    play_sound "ui_hacking_charscroll.wav"
+    typewrite "$readoption:"
+    echo
+    cat > "$logpath"
+}
+
+edit_entry() {
+    refresh_entries
+
+    draw_header
+    play_sound "ui_hacking_charscroll.wav"
+    typewrite "SELECT LOG TO EDIT:"
+
+    COLUMNS=12
+    select readoption in "${entrylist[@]}"; do
+        case "$readoption" in
+            "Go Back")
+                play_sound "ui_hacking_charenter_01.wav"
+                main_menu
+                ;;
+            *)
+                play_sound "ui_hacking_charenter_01.wav"
+                ;;
+        esac
+
+        local logpath="$BASE_DIR/entries/$readoption"
+        local editor
+        editor="$(get_editor)"
+
+        if [[ -n "$editor" ]]; then
+            draw_header
+            echo
+            play_sound "ui_hacking_charscroll.wav"
+            typewrite "OPENING LOG FOR EDIT. SAVE AND EXIT EDITOR TO RETURN."
+            play_sound "ui_hacking_charenter_01.wav"
+            $editor "$logpath"
         else
-        echo "OPERATION CANCELLED"
-        play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
-        play -q  $BASE_DIR/ui_hacking_passbad.wav -t alsa 
-        sleep 0.2
-        
-        #goes back to main menu
-        repeatmainmenufunc
+            integrated_editor_fallback "$logpath" "$readoption"
         fi
-        done
+
+        clear
+        play_sound "ui_hacking_charenter_01.wav"
+        main_menu
+    done
 }
 
-#same as main menu screen function, but without the annoying animations
-repeatmainmenufunc ()
-{
-clear
+###############################################################################
+# Delete a personal log
+###############################################################################
 
-display_center "$BASE_DIR/greeterheader.txt"
-echo "$greeter" 
-play -q $BASE_DIR/ui_hacking_charscroll.wav -t alsa
-echo "SELECT OPTION:" | pv -qL 80
-echo "1) View Personal Logs"
-echo "2) Record Personal Log"
-echo "3) Delete Personal Log"
-echo "4) Terminate Session"
-echo "5) Set Terminal/Inquire"
-while true; do
-    read -p "#? " menuchoice
-    case $menuchoice in
-    1)
-    play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
-    viewentriesfunc
-    ;;
-    2)
-    play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
-    writeentryfunc
-    ;;
-    3)
-    play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
-    deleteentryfunc
-    ;;
-    4|exit)
-    play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
-    echo "SESSION TERMINATED" && sleep 2
-    exit
-    ;;
-    5|"")
-    play -q $BASE_DIR/ui_hacking_charenter_01.wav -t alsa
-    echo "ENTERING DIRECT COMMAND MODE. TYPE 'exit' TO RETURN." | pv -qL 80
-    $SHELL
-    repeatmainmenufunc
-    ;;
-    *)
-    play -q $BASE_DIR/ui_hacking_passbad.wav -t alsa
-    ;;
-    esac
-done
+delete_entry() {
+    refresh_entries
+
+    draw_header
+    play_sound "ui_hacking_charscroll.wav"
+    typewrite "SELECT LOG TO DELETE:"
+
+    COLUMNS=12
+    select readoption in "${entrylist[@]}"; do
+        case "$readoption" in
+            "Go Back")
+                play_sound "ui_hacking_charenter_01.wav"
+                main_menu
+                ;;
+            *)
+                play_sound "ui_hacking_charenter_01.wav"
+                ;;
+        esac
+
+        # Confirm deletion
+        draw_header
+        echo
+        play_sound "ui_hacking_charscroll.wav"
+        typewrite "CONFIRM DELETION OF $readoption? [Y/N]"
+        play_sound "ui_hacking_charscroll.wav"
+
+        read confirmdeletion
+        if [[ "${confirmdeletion^^}" == "Y" || "${confirmdeletion^^}" == "YES" ]]; then
+            rm -f "$BASE_DIR/entries/$readoption"
+            play_sound "ui_hacking_charenter_01.wav"
+            echo "LOG PURGED"
+            play_sound "ui_hacking_passgood.wav"
+            sleep 0.1
+        else
+            echo "OPERATION CANCELLED"
+            play_sound "ui_hacking_charenter_01.wav"
+            play_sound "ui_hacking_passbad.wav"
+            sleep 0.2
+        fi
+
+        main_menu
+    done
 }
 
+###############################################################################
+# Boot sequence — press Enter at any point to skip to main menu
+# Set SKIP_BOOT=true in .env to skip entirely
+###############################################################################
 
-
-
-#some random aesthetic startup junk
+if [[ "${SKIP_BOOT}" == "true" ]]; then
+    main_menu animated
+    exit 0
+fi
 
 clear
-play -q $BASE_DIR/ui_hacking_charscroll.wav -t alsa
-echo "RBIOS v95.2" | pv -qL 80
-read -t 0.4 && mainmenufunc
-play -q $BASE_DIR/ui_hacking_charscroll.wav -t alsa
-echo "LOADING ROBCO UNIFIED OS..." | pv -qL 80
-read -t 0.4 && mainmenufunc
-play -q $BASE_DIR/ui_hacking_charscroll.wav -t alsa
-echo "64K RAM SYSTEM" | pv -qL 80
-read -t 0.4 && mainmenufunc
-play -q $BASE_DIR/ui_hacking_charscroll.wav -t alsa
-echo "HOLOTAPE READER PRESENT" | pv -qL 80
-read -t 0.4 && mainmenufunc
+play_sound "ui_hacking_charscroll.wav"
+typewrite "RBIOS v95.2"
+read -t 0.4 && main_menu animated
+
+play_sound "ui_hacking_charscroll.wav"
+typewrite "LOADING ROBCO UNIFIED OS..."
+read -t 0.4 && main_menu animated
+
+play_sound "ui_hacking_charscroll.wav"
+typewrite "64K RAM SYSTEM"
+read -t 0.4 && main_menu animated
+
+play_sound "ui_hacking_charscroll.wav"
+typewrite "HOLOTAPE READER PRESENT"
+read -t 0.4 && main_menu animated
+
 clear
 echo $'
 
@@ -315,10 +352,10 @@ echo $'
  |_|__\_\___/|_.__/ \_____\___/  _           
 
 '
-           
-echo "==============================================" | pv -qL 50
-play -q $BASE_DIR/ui_hacking_passgood.wav -t alsa
-read -t 1 && mainmenufunc
 
-#goes to the main menu
-mainmenufunc;
+echo "==============================================" | pv -qL "${TYPEWRITE_SPEED}"
+play_sound "ui_hacking_passgood.wav"
+read -t 1 && main_menu animated
+
+# Go to the main menu with animated header
+main_menu animated
